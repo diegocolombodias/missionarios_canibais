@@ -1,147 +1,139 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""
+Resolvendo o problema dos 3 canibais e 3 missionários
+querendo atravessar um rio com o algoritmo Breadth First Search (BFS). 
+As regras são de que o barco pode levar no máximo 
+2 pessoas e que sempre devem ter mais missionários do 
+que canibais em uma dada margem do rio.
 
-class Estado():
+Os estados serão representados com [#M, #C, #L].
+Onde M representa os missionários, C os canibais
+e B se o barco está, ou não, na margem do rio 
+podendo B, assim, ser 1 (está na margem) ou 0 (está do outro lado).
+Ou seja: 
+Estado Inicial = [3,3,1] -> Todos os missionários e canibais + o barco
+Estado Final = [0,0,0] -> Todos passaram
+"""
+
+def movimentos(estado):
     """
-        Representa um estado dentro de uma árvore de estados para resolver o problema de
-        atravessar missionários e canibais para a outra margem do rio.
-        Um estado contém a quantinade de missionários à esquerda do rio (missionarios_esq),
-        a quantidade de missionarios à direita do rio (missionarios_dir), a quantidade de
-        canibais à esquerda do rio (canibais_esq), a quantidade de canibais a direita do
-        rio (canibais_dir), o lado do rio (lado_rio), seu pai (pai) e seus filhos (filhos).
-        Um estado pode ser válido ou não, assim como pode ser a solução do problema ou não.
+    Retorna uma lista dos movimentos possíveis (viagens permitidas)
+    em um dado estado do problema
     """
+    possibilidades = []
+    miss = estado[0]
+    cani = estado[1]
+    barco = estado[2]
 
-    def __init__(self, missionarios_esq, missionarios_dir, canibais_esq, canibais_dir, lado_rio):
-        """
-            Inicializa um estado com as informações de quantidade de missionários e canibais de
-            cada lado do rio, além da informação de em que lado do rio está o barco.
-        """
-        self.missionarios_esq = missionarios_esq
-        self.missionarios_dir = missionarios_dir
-        self.canibais_esq = canibais_esq
-        self.canibais_dir = canibais_dir
-        self.lado_rio = lado_rio
-        self.pai = None
-        self.filhos = []
-
-    def __str__(self):
-        """
-            Define a representação em string de um estado.
-        """
-        return 'Missionarios: {}\t| Missionarios: {}\nCanibais: {}\t| Canibais: {}'.format(
-            self.missionarios_esq, self.missionarios_dir, self.canibais_esq, self.canibais_dir
-        )
-
-    def estado_valido(self):
-        """
-            Verifica se o estado é válido, ou seja, não possue mais canibais que missionários
-            em nenhum lado do rio.
-        """
-        # Não se pode gerar estados onde o número de canibais ou missionários em qualquer lado
-        # do rio seja negativo
-        if ((self.missionarios_esq < 0) or (self.missionarios_dir < 0)
-            or (self.canibais_esq < 0) or (self.canibais_dir < 0)):
-            return False
-        # Verifica se em ambas as margens do rio o número de missionários não é inferior ao número
-        # de canibais. Lembrando que caso não hajam missionários em um dos lados, não é necessário
-        # verificar o número de canibais nele.
-        return ((self.missionarios_esq == 0 or self.missionarios_esq >= self.canibais_esq) and
-                (self.missionarios_dir == 0 or self.missionarios_dir >= self.canibais_dir))
-
-
-    def estado_final(self):
-        """
-            Verifica se o estado é um estado final, ou seja, é uma das possíveis soluções do
-            problema.
-        """
-        # Um estado é um estado final se todos os missionários e canibais atravessaram o rio
-        resultado_esq = self.missionarios_esq == self.canibais_esq == 0
-        resultado_dir = self.missionarios_dir == self.canibais_dir == 3
-        return resultado_esq and resultado_dir
-
-    def gerar_filhos(self):
-        """
-            Gera todos os possíveis filhos de um estado, se este for um estado válido e não
-            for um estado final.
-        """
-        # Encontra o novo lado do rio
-        novo_lado_rio = 'dir' if self.lado_rio == 'esq' else 'esq'
-        # Gera a lista de possíveis movimentos
-        movimentos = [
-            {'missionarios': 2, 'canibais': 0},
-            {'missionarios': 1, 'canibais': 0},
-            {'missionarios': 1, 'canibais': 1},
-            {'missionarios': 0, 'canibais': 1},
-            {'missionarios': 0, 'canibais': 2},
-        ]
-        # Gera todos os possíveis estados e armazena apenas os válidos na lista de filhos
-        # do estado atual
-        for movimento in movimentos:
-            if self.lado_rio == 'esq':
-                # Se o barco estiver a esquerda do rio, os missionários e canibais saem da
-                # margem esquerda do rio e vão para a direita
-                missionarios_esq = self.missionarios_esq - movimento['missionarios']
-                missionarios_dir = self.missionarios_dir + movimento['missionarios']
-                canibais_esq = self.canibais_esq - movimento['canibais']
-                canibais_dir = self.canibais_dir + movimento['canibais']
-            else:
-                # Caso contrário, os missionários e canibais saem da margem direita do rio
-                # e vão para a esquerda
-                missionarios_dir = self.missionarios_dir - movimento['missionarios']
-                missionarios_esq = self.missionarios_esq + movimento['missionarios']
-                canibais_dir = self.canibais_dir - movimento['canibais']
-                canibais_esq = self.canibais_esq + movimento['canibais']
-            # Cria o estado do filho e caso este seja válido, o adiciona à lista de filhos do pai
-            filho = Estado(missionarios_esq, missionarios_dir, canibais_esq,
-                           canibais_dir, novo_lado_rio)
-            filho.pai = self
-            if filho.estado_valido():
-                self.filhos.append(filho)
-
-
-class Missionarios_Canibais():
     """
-        Resolve o problema dos missionários e canibais, gerando para isso uma árvore de estados.
+    Primeiro, checa-se de que lado está 
+    o barco:
+    'barco == 1 ou barco == 0'
+    
+    Então, em ambos os casos, é feito um
+    'for' para testar as possibilidades
+    de travessia. 
+
+    Miss2 e Cani2 são apenas variáveis
+    para facilitar a escrita, pois alternam-se soma
+    e subtração nos cálculos. 
+
+    Depois são feitos os testes:
+    
+    CASO 1:
+        Alguém deve estar pilotando o barco: 'i+j >= 1'
+        Podem ter no máximo duas pessoas no barco: 'i+j<=2'
+        O número de missionários e canibais não pode ser negativo: 'miss2>=0...'
+        Nos testes, deve-se respeitar a quantidade inicial de pessoas: 'miss2<=3...'
+
+        Caso não tenham ido todos os missionários na viagem: 'miss2 != 0'
+            Devem ficar mais missionários do que canibais na margem: 'miss2>=cani2'
+                Se na outra margem já houver algum missionário, então: '3-miss2!=0'
+                    Devem ter mais missionários do que canibais na outra margem: '3-cani+j<=3-miss+i'
+                    Finalmente, então, adiciona-se a possibilidade.
+        
+                Se não tiverem missionários na outra margem, podem ir mais canibais sem restrições.
+        
+        Caso tenham ido todos os missionários com essa viagem apenas adiciona-se.
+
+    CASO 2:
+        Os testes são basicamente os mesmos do primeiro, com a diferença 
+        de estarmos adicionando números, ao invés de remover, na nossa
+        representação. E alguns testes serem feitos com o estado 'atual' (miss,cani)
+        e não com sua projeção (miss2,cani2).
     """
+    if barco == 1:
+        for i in range(0,3):
+            for j in range(0,3):
+                miss2 = miss - i
+                cani2 = cani - j
+                if i+j<=2 and i+j>=1 and miss2>=0 and cani2>=0 and miss2<=3 and cani2<=3:
+                    if miss2 != 0:
+                        if miss2>=cani2:
+                            if (3-miss2) != 0:
+                                if (3-cani+j)<=(3-miss+i):
+                                    possibilidades.append([miss2,cani2,0])
+                            else:
+                                possibilidades.append([miss2,cani2,0])
+                    else:
+                        possibilidades.append([miss2,cani2,0])
+    else:
+        for i in range(0,3):
+            for j in range(0,3):
+                miss2 = miss + i
+                cani2 = cani + j
+                if i+j<=2 and i+j>=1 and miss2>=0 and cani2>=0 and miss2<=3 and cani2<=3:
+                    if miss != 0:
+                        if (3-miss2) != 0:
+                            if (3-cani-j)<=(3-miss-i) and miss2>=cani2:
+                                possibilidades.append([miss2,cani2,1])
+                        else:
+                            possibilidades.append([miss2,cani2,1])
+                    else:
+                        possibilidades.append([miss2,cani2,1])
+    
+    return possibilidades
 
-    def __init__(self):
-        """
-            Inicializa uma instância do problema com uma raiz pré-definida e ainda sem solução.
-        """
-        # Insere a raiz na fila de execução, que será utilizada para fazer uma busca em largura
-        self.fila_execucao = [Estado(3, 0, 3, 0, 'esq')]
-        self.solucao = None
+"""
+Agora é feita uma simples implementação do BFS.
+A fronteira é o estado inicial, a priori e nenhum nó foi explorado.
+Então 'path' é o primeiro nó da fronteira, que em seguida é removido.
+O fim do 'path' é o último nó explorado através daquela forma de solução.
 
-    def gerar_solucao(self):
-        """
-            Encontra a solução gerando uma árvore de estados a ser percorrida com o algoritmo de
-            busca em largura, que utiliza uma fila em sua execução.
-        """
-        # Realiza a busca em largura em busca da solução
-        for elemento in self.fila_execucao:
-            if elemento.estado_final():
-                # Se a solução foi encontrada, o caminho que compõe a solução é gerado realizando
-                # o caminho de volta até a raiz da árvore de estados e então encerra a busca
-                self.solucao = [elemento]
-                while elemento.pai:
-                    self.solucao.insert(0, elemento.pai)
-                    elemento = elemento.pai
-                break;
-            # Caso o elemento não seja a solução, gera seus filhos e os adiciona na fila de execução
-            elemento.gerar_filhos()
-            self.fila_execucao.extend(elemento.filhos)
+Se um nó já foi explorado é ignorado.
 
+Checa-se todas as possibilidades de movimento do último nó de um dado
+caminho e, caso não tenha sido visitado antes, adiciona-se à fronteira
+mais essa possível resposta. Se esse nó explorado for o estado desejado
+o algoritmo se encerra.
+"""
 
-def main():
-    # Instancia o problema e gera sua solução
-    problema = Missionarios_Canibais()
-    problema.gerar_solucao()
-    # Exibe a solução em tela, separando cada passo
-    for estado in problema.solucao:
-        print estado
-        print 34 * '-'
+def bfs(inicio,final):
+    front = [[inicio]]
+    explored = []
+    while front:
+        path = front[0]
+        front = front[1:]
+        end = path[-1]
+        if end in explored:
+            continue
+        for move in movimentos(end):
+            if move in explored:
+                continue
+            front.append(path + [move])
+        explored.append(end)
+        if end == final: break
+    
+    return path
 
-if __name__ == '__main__':
-    main()
+inicio = [3,3,1]
+final = [0,0,0]
 
+resposta = bfs(inicio,final)
+contador = 0
+for estado in resposta:
+    print('Movimento',contador)
+    print('Missionários:',estado[0])
+    print('Canibais:', estado[1])
+    print('Barco na margem:', estado[2])
+    print('------------')
+    contador+=1
